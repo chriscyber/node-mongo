@@ -1,32 +1,57 @@
-const MongoClient = require('mongodb').MongoClient; //driver that creates interface entre db and application
-const assert = require('assert').strict;
+const MongoClient = require("mongodb").MongoClient; //driver that creates interface entre db and application
+const assert = require("assert").strict;
+const dboper = require("./operations");
 
-const url = 'mongodb://localhost:27017/'; //connection to mongo server. port on which server is running
-const dbname = 'nucampsite'; //db to connect to
+const url = "mongodb://localhost:27017/"; //connection to mongo server. port on which server is running
+const dbname = "nucampsite"; //db to connect to
 
 MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
-  assert.strictEqual(err, null); //actual, expected. if they're not ===, assert fails, logs error, and terminates 
-  console.log('Connected correctly to mongodb server');
-  
+  assert.strictEqual(err, null); //actual, expected. if they're not ===, assert fails, logs error, and terminates
+  console.log("Connected correctly to mongodb server");
+
   const db = client.db(dbname);
 
-  db.dropCollection('campsites', (err, result) => {
+  //dbname.campsite.insertOne({ name: "temp" });
+
+  db.dropCollection("campsites", (err, result) => {
     assert.strictEqual(err, null);
-    console.log('Dropped Collection', result);
+    console.log("Dropped Collection", result);
 
-    const collection = db.collection('campsites');
+    dboper.insertDocument(
+      db,
+      { name: "Breadcrumb Trail Campground", description: "Test" },
+      "campsites",
+      (result) => {
+        console.log("Insert Document:", result.ops); //this inline callback definiton will remember callback result later.
 
-    collection.insertOne({name: "Breadcrumb Trail Campground", description: "Test"},
-    (err, result) => {
-      assert.strictEqual(err, null);
-      console.log('Insert Document:', result.ops);
+        dboper.findDocuments(db, "campsites", (docs) => {
+          console.log("Found Documents:", docs);
 
-      collection.find().toArray((err, docs) => { //to an array so can console.log results
-        assert.strictEqual(err, null);
-        console.log('Found Documents:', docs);
+          dboper.updateDocument(
+            db,
+            { name: "Breadcrumb Trail Campground" },
+            { description: "Updated Test Description" },
+            "campsites",
+            (result) => {
+              console.log("Updated Doc Count:", result.result.nModified);
 
-        client.close(); //closes connection from server
-      })
-    })
-  })
+              dboper.findDocuments(db, "campsites", (docs) => {
+                console.log("Found Docs:", docs);
+
+                dboper.removeDocument(
+                  db,
+                  { name: "Breadcrumb Trail Campground" },
+                  "campsites",
+                  (result) => {
+                    console.log("Deleted Doc Count:", result.deletedCount);
+                    client.close(); //closes connection from server
+                  }
+                );
+              });
+            }
+          );
+        });
+      }
+    );
+  });
 });
